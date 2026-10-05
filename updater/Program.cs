@@ -245,18 +245,40 @@ internal sealed class UpdateService(string home, UpdaterConfig cfg, Logger log)
         var tag = root.GetProperty("tag_name").GetString() ?? "0.0.0";
         var ver = tag.TrimStart('v');
         if (ver.Split('.').Length == 3) ver += ".0";
-        string? zipUrl = null;
-        foreach (var a in root.GetProperty("assets").EnumerateArray())
-        {
-            var name = a.GetProperty("name").GetString() ?? "";
-            if (name.StartsWith(cfg.AssetNamePrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-            {
-                zipUrl = a.GetProperty("browser_download_url").GetString();
-                break;
-            }
-        }
-        if (zipUrl is null) throw new InvalidOperationException("Release に zip がありません");
+        var assets = root.GetProperty("assets").EnumerateArray()
+            .Select(a => (
+                Name: a.GetProperty("name").GetString() ?? "",
+                Url: a.GetProperty("browser_download_url").GetString() ?? ""))
+            .ToList();
+        var zipUrl = SelectPluginZipUrl(assets, cfg.AssetNamePrefix);
+        if (zipUrl is null) throw new InvalidOperationException("Release に zip (非 tools) がありません");
         return new VersionInfo { Version = ver, ZipUrl = zipUrl };
+    }
+
+
+    /// <summary>
+    /// Pick the plugin zip from a release asset list. Never returns *-tools.zip.
+    /// Prefers names like streamdeckai-v0.3.zip / streamdeckai-v0.3.0.zip over other prefix matches.
+    /// </summary>
+    internal static string? SelectPluginZipUrl(
+        IEnumerable<(string Name, string Url)> assets, string prefix)
+    {
+        var candidates = assets
+            .Where(a =>
+                a.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+                && a.Name.IndexOf("-tools", StringComparison.OrdinalIgnoreCase) < 0)
+            .ToList();
+        if (candidates.Count == 0) return null;
+
+        // Exact version-style: prefix + optional v + digits.digits... + .zip
+        var escaped = System.Text.RegularExpressions.Regex.Escape(prefix);
+        var exact = new System.Text.RegularExpressions.Regex(
+            "^" + escaped + @"v?\d+(\.\d+)*\.zip$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var preferred = candidates.FirstOrDefault(a => exact.IsMatch(a.Name));
+        if (!string.IsNullOrEmpty(preferred.Name)) return preferred.Url;
+        return candidates[0].Url;
     }
 
     private string ReadInstalled()

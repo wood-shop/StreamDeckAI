@@ -97,6 +97,31 @@ function Get-InstalledVersion {
   return "0.0.0.0"
 }
 
+
+function Select-PluginZipAsset {
+  param(
+    [Parameter(Mandatory=$true)]$Assets,
+    [Parameter(Mandatory=$true)][string]$Prefix
+  )
+  # Prefer plugin zip (streamdeckai-vX.Y[.Z].zip); never pick *-tools.zip.
+  # GitHub lists assets alphabetically, so streamdeckai-v0.3-tools.zip would
+  # otherwise win over streamdeckai-v0.3.zip with a naive First match.
+  $candidates = @(
+    $Assets | Where-Object {
+      $n = [string]$_.name
+      $n -and ($n -like "$Prefix*.zip") -and ($n -notmatch '(?i)-tools')
+    }
+  )
+  if ($candidates.Count -eq 0) { return $null }
+  $exact = @(
+    $candidates | Where-Object {
+      [string]$_.name -match ('(?i)^' + [regex]::Escape($Prefix) + 'v?\d+(\.\d+)*\.zip$')
+    }
+  )
+  if ($exact.Count -gt 0) { return $exact[0] }
+  return $candidates[0]
+}
+
 function Get-RemoteInfo($Config) {
   if ($Config.versionJsonUrl) {
     Write-Log "fetch version.json: $($Config.versionJsonUrl)"
@@ -121,8 +146,8 @@ function Get-RemoteInfo($Config) {
   if ($ver -notmatch '\.\d+\.\d+\.\d+$' -and $ver -match '^\d+\.\d+\.\d+$') { $ver = "$ver.0" }
   elseif ($ver -match '^\d+\.\d+$') { $ver = "$ver.0.0" }
   $prefix = [string]$Config.assetNamePrefix
-  $asset = @($rel.assets) | Where-Object { $_.name -like "$prefix*.zip" } | Select-Object -First 1
-  if (-not $asset) { throw "Release に ${prefix}*.zip がありません" }
+  $asset = Select-PluginZipAsset -Assets @($rel.assets) -Prefix $prefix
+  if (-not $asset) { throw "Release に ${prefix}*.zip (非 tools) がありません" }
   return [pscustomobject]@{
     Version = $ver
     ZipUrl  = [string]$asset.browser_download_url
