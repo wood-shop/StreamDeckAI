@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "Grok Bot",
+  "id": "grok-bot",
+  "version": "0.0.0",
+  "category": "ツール",
+  "status": "developing",
+  "features": "Grok Bot の作業状態を Stream Deck に表示。完了・確認待ちの音声通知、Windows Terminal タブ移動。",
+  "usage": "StreamDeckAI セレクタで有効化すると、agent=grok のイベントがボタンに出ます。状態は http://127.0.0.1:17890/event へ POST してください（hooks/grok-example.ps1 参照）。",
+  "install_type": "portable",
+  "streamdeck": {
+    "agent": "grok",
+    "enabledDefault": true
+  },
+  "detect": { "registry_name": "Grok Bot", "match": "prefix" },
+  "manuals": []
+}

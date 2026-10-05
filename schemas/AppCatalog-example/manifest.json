@@ -3,10 +3,10 @@
   "name": "Claude Code",
   "id": "claude-code",
   "version": "0.0.0",
-  "category": "agent",
+  "category": "ツール",
   "status": "developing",
-  "features": "Stream Deck 向けエージェント(状態通知)。実インストーラは別途。",
-  "usage": "StreamDeckAI セレクタで有効化すると、agent=claude のイベントがボタンに出ます。",
+  "features": "Claude Code の作業状態を Stream Deck に表示。完了・確認待ちの音声通知、Windows Terminal タブ移動、コンテキスト使用率表示。",
+  "usage": "StreamDeckAI セレクタで有効化すると、agent=claude のイベントがボタンに出ます。Claude Code 側に hooks（sdai-hook.ps1）を設定してください。",
   "install_type": "portable",
   "streamdeck": {
     "agent": "claude",

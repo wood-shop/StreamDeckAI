@@ -1,6 +1,10 @@
 # 変更履歴
 
 ## 未リリース (main)
+### 追加
+- **統合セットアップ** (`setup/` → Release 資産 `StreamDeckAI-Setup-0.3.0.zip`): プラグイン + Selector + Updater を一括インストール。ショートカットは「StreamDeckAI」1 本のみ (Selector)。Updater は Run/Startup にサイレント登録。Uninstall.ps1 同梱。`.NET SDK` 不要 (PowerShell)。
+- ストア向け下書き `schemas/AppCatalog-StreamDeckAI/manifest.json` (streamdeck フィールドなし)。
+
 ### 修正
 - **セレクタのカタログ取得** (C# `selector/CatalogService.cs` / PowerShell `updater/StreamDeckAI-Selector.ps1`・`sdai-selector.ps1`): 非公開の `wood-shop/grokAppStore` に対応。トークンを `STREAMDECKAI_GITHUB_TOKEN` → `updater-config.json` の `githubToken` の順で読み、`Authorization: Bearer` を付与。manifest は `raw.githubusercontent.com` ではなく Contents API (base64) で取得。401/404 時は日本語で githubToken 設定を案内し、ローカル Defaults で継続。
 - PowerShell セレクタに「カタログ再取得」ボタンと起動時の自動取得、`-FetchOnly` (UI なし確認) を追加。既知 id のチェック状態は保持。ファイルを UTF-8 BOM 付きに (Windows PowerShell 5.1 の文字化け防止)。

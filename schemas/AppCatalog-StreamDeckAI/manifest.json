@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "name": "StreamDeckAI",
+  "id": "streamdeckai",
+  "version": "0.3.0",
+  "category": "ツール",
+  "status": "developing",
+  "features": "Stream Deck Neo 向け。Claude Code / Codex CLI / Grok の作業状態をボタンで表示し、押すと Windows Terminal のタブへ移動、完了・確認待ちを日本語音声で通知。アプリセレクタと自動アップデートを同梱した単一アプリ。",
+  "usage": "1. StreamDeckAI-Setup-0.3.0.zip を展開し Install.bat を実行。2. Stream Deck を再起動し、Space/Tab/InfoBar を配置。3. スタートメニューの「StreamDeckAI」で表示アプリを選択。4. 各エージェントに hooks/sdai-hook.ps1 を設定（任意）。アンインストールは同梱 Uninstall.bat。",
+  "install_type": "installer",
+  "detect": {
+    "registry_name": "StreamDeckAI",
+    "match": "exact",
+    "exe": "StreamDeckAI.ps1"
+  },
+  "release_date": "2026-10-06",
+  "update_note": "v0.3.0: プラグイン+Selector+Updater を一括インストールする Setup zip。ショートカットは StreamDeckAI 1 本。CFA 向け sdai-plugin.js / sdai-hook.ps1。",
+  "installer": {
+    "release_tag": "v0.3.0",
+    "asset_name": "StreamDeckAI-Setup-0.3.0.zip",
+    "file_name": "StreamDeckAI-Setup-0.3.0.zip",
+    "size": 102112,
+    "sha256": "c136b14265d2d2b42aebe150a0e28325f97ab533dbc76dbaeaca466f155033b6"
+  },
+  "manuals": []
+}

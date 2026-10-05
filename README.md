@@ -47,9 +47,9 @@ cd selector
 無効な agent からの `POST /event` は `{ ok: true, ignored: true }` を返し、セッションには載せません。
 
 ### v0.2 からの更新手順
-1. `streamdeckai-v0.3.zip` を展開して Plugins へ配置 (または開発リンク) し、Stream Deck を再起動
-2. `updater\Install-Updater.ps1` で自動更新を入れる
-3. (任意) `selector\build.ps1` でセレクタをビルドして起動し、表示アプリを選ぶ
+1. **おすすめ:** `StreamDeckAI-Setup-0.3.0.zip` を展開して `Install.bat` (プラグイン + Selector + Updater を一括)
+2. または従来どおり `streamdeckai-v0.3.zip` を Plugins へ配置し、`updater\Install-Updater.ps1` を実行
+3. Stream Deck を再起動し、スタートメニューの「StreamDeckAI」で表示アプリを選ぶ
 
 ---
 ## 必要なもの
@@ -58,6 +58,18 @@ cd selector
 - 日本語の音声(設定 → 時刻と言語 → 音声。Haruka など)。無い場合は読み上げされず、ログに残るだけです
 
 ## インストール
+
+### おすすめ: 統合セットアップ (ストア向け・.NET 不要)
+Release の **`StreamDeckAI-Setup-0.3.0.zip`** を展開し、`Install.bat` を実行してください。
+
+- プラグインを Elgato Plugins へ配置 (`bin/sdai-plugin.js` / `hooks/sdai-hook.ps1`)
+- Selector + Updater を `%LOCALAPPDATA%\StreamDeckAI\` へ配置
+- ショートカットは **「StreamDeckAI」1 本のみ** (セレクタ起動)。Updater はログオン時に裏で起動
+- アンインストールは同梱 `Uninstall.bat` (Claude/Codex の hook 設定は消しません)
+
+詳細は zip 内 `README.md` またはリポジトリ `setup/README.md`。
+
+### 開発・手動インストール
 PowerShell で、zip を展開したフォルダ(開発ツリーでは `plugin/`)に入って実行します。
 
 ```powershell

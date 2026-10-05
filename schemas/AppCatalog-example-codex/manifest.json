@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "Codex CLI",
+  "id": "codex",
+  "version": "0.0.0",
+  "category": "ツール",
+  "status": "developing",
+  "features": "Codex CLI の完了通知を Stream Deck に中継。ボタン表示と音声通知。",
+  "usage": "StreamDeckAI セレクタで有効化すると、agent=codex のイベントがボタンに出ます。config.toml の notify を StreamDeckAI の中継スクリプトへ向けてください。",
+  "install_type": "portable",
+  "streamdeck": {
+    "agent": "codex",
+    "enabledDefault": true
+  },
+  "detect": { "registry_name": "Codex", "match": "prefix" },
+  "manuals": []
+}
