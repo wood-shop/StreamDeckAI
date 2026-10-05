@@ -1,5 +1,9 @@
 # 変更履歴
 
+## Unreleased
+
+- **セレクタ: 開発中アプリを既定表示** — `showDeveloping: true` (UI「開発中のアプリも表示」既定チェック)。初回起動で Defaults (claude-code / codex / grok-bot) を即書き込み・一覧表示。カタログ取得失敗時も空にしない。C# も起動時にカタログ自動取得。
+
 ## 未リリース (main)
 ### 追加
 - **統合セットアップ** (`setup/` → Release 資産 `StreamDeckAI-Setup-0.3.0.zip`): プラグイン + Selector + Updater を一括インストール。ショートカットは「StreamDeckAI」1 本のみ (Selector)。Updater は Run/Startup にサイレント登録。Uninstall.ps1 同梱。`.NET SDK` 不要 (PowerShell)。

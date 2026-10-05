@@ -2,6 +2,7 @@
 # StreamDeckAI Selector (WinForms, no .NET SDK needed)
 #   通常起動: アプリ選定ウィンドウを表示
 #   -FetchOnly: UI なしでカタログ取得 + マージ結果を表示 (保存しない / 動作確認用)
+#   既定: showDeveloping=true — Claude Code / Codex / Grok Bot (Defaults) を起動直後から一覧表示
 param([switch]$FetchOnly)
 $ErrorActionPreference = 'Stop'
 
@@ -14,26 +15,77 @@ $catalogRepo = 'grokAppStore'
 $catalogDir = 'AppCatalog'
 $knownAgents = @('claude', 'codex', 'grok')
 $defaults = @'
-{"schema":1,"updatedAt":"","source":"defaults","apps":[
+{"schema":1,"updatedAt":"","source":"defaults","showDeveloping":true,"apps":[
 {"id":"claude-code","name":"Claude Code","category":"ツール","status":"developing","enabled":true,"streamdeck":{"agent":"claude","enabledDefault":true}},
 {"id":"codex","name":"Codex CLI","category":"ツール","status":"developing","enabled":true,"streamdeck":{"agent":"codex","enabledDefault":true}},
 {"id":"grok-bot","name":"Grok Bot","category":"ツール","status":"developing","enabled":true,"streamdeck":{"agent":"grok","enabledDefault":true}}
 ]}
 '@
 
+function Get-ShowDeveloping($doc) {
+  # Missing / null → true (default ON). Explicit false only when user unchecked the toggle.
+  if ($null -eq $doc) { return $true }
+  $prop = $doc.PSObject.Properties['showDeveloping']
+  if (-not $prop) { return $true }
+  if ($null -eq $prop.Value) { return $true }
+  return [bool]$prop.Value
+}
+
+function Set-ShowDeveloping($doc, [bool]$Value) {
+  if ($doc.PSObject.Properties['showDeveloping']) { $doc.showDeveloping = $Value }
+  else { $doc | Add-Member -NotePropertyName showDeveloping -NotePropertyValue $Value }
+}
+
+function Ensure-DefaultAgents($doc) {
+  if (-not $doc.apps) { $doc.apps = @() }
+  $apps = New-Object System.Collections.ArrayList
+  foreach ($a in @($doc.apps)) { [void]$apps.Add($a) }
+  $defs = ($defaults | ConvertFrom-Json).apps
+  foreach ($d in @($defs)) {
+    $exists = $apps | Where-Object { $_.id -eq $d.id } | Select-Object -First 1
+    if (-not $exists) { [void]$apps.Add($d) }
+  }
+  if ($apps.Count -eq 0) {
+    foreach ($d in @($defs)) { [void]$apps.Add($d) }
+  }
+  $doc.apps = @($apps)
+  if (-not ($doc.PSObject.Properties['showDeveloping'])) {
+    Set-ShowDeveloping $doc $true
+  }
+}
+
+function Write-AppsFile($doc) {
+  New-Item -ItemType Directory -Force -Path $homeDir | Out-Null
+  $doc.updatedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
+  if (-not $doc.schema) { $doc | Add-Member -NotePropertyName schema -NotePropertyValue 1 -Force }
+  $json = $doc | ConvertTo-Json -Depth 8
+  [IO.File]::WriteAllText($appsPath, $json, (New-Object Text.UTF8Encoding $false))
+}
+
 function Load-Apps {
   if (Test-Path $appsPath) {
-    try { return (Get-Content $appsPath -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { }
+    try {
+      $doc = (Get-Content $appsPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+      Ensure-DefaultAgents $doc
+      # Persist showDeveloping:true for legacy files so Defaults agents stay visible.
+      if (-not ($doc.PSObject.Properties['showDeveloping'])) {
+        Set-ShowDeveloping $doc $true
+        Write-AppsFile $doc
+      }
+      return $doc
+    } catch { }
   }
-  return ($defaults | ConvertFrom-Json)
+  # First launch: write Defaults (all 3 enabled, showDeveloping true) immediately.
+  $doc = $defaults | ConvertFrom-Json
+  $doc.updatedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
+  Write-AppsFile $doc
+  return $doc
 }
 
 function Save-Apps($doc) {
-  New-Item -ItemType Directory -Force -Path $homeDir | Out-Null
-  $doc.updatedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
   $doc.source = 'selector'
-  $json = $doc | ConvertTo-Json -Depth 8
-  [IO.File]::WriteAllText($appsPath, $json, (New-Object Text.UTF8Encoding $false))
+  Write-AppsFile $doc
+  $json = [IO.File]::ReadAllText($appsPath, (New-Object Text.UTF8Encoding $false))
   try {
     $port = 17890
     $bytes = [Text.Encoding]::UTF8.GetBytes($json)
@@ -161,6 +213,7 @@ function Merge-Catalog($doc, $entries) {
   }
   $doc.apps = @($apps | Sort-Object { [string]$_.name })
   $doc.source = 'local+catalog'
+  Ensure-DefaultAgents $doc  # catalog に Agents が無くても Defaults 3 件は残す
   return @{ Added = $added; Updated = $updated }
 }
 
@@ -172,9 +225,10 @@ if ($FetchOnly) {
     $mr = Merge-Catalog $doc $r.Entries
     Write-Output "マージ: 新規 $($mr.Added) / 更新 $($mr.Updated)"
   }
+  Write-Output ("showDeveloping={0}" -f (Get-ShowDeveloping $doc))
   foreach ($a in @($doc.apps)) {
     $agent = if ($a.streamdeck) { $a.streamdeck.agent } else { '?' }
-    Write-Output ("{0}`t{1}`tagent={2}`tcategory={3}`tenabled={4}" -f $a.id, $a.name, $agent, $a.category, $a.enabled)
+    Write-Output ("{0}`t{1}`tagent={2}`tcategory={3}`tenabled={4}`tstatus={5}" -f $a.id, $a.name, $agent, $a.category, $a.enabled, $a.status)
   }
   return
 }
@@ -187,34 +241,42 @@ Add-Type -AssemblyName System.Drawing
 $doc = Load-Apps
 $form = New-Object Windows.Forms.Form
 $form.Text = 'StreamDeckAI アプリ選定'
-$form.Size = New-Object Drawing.Size(560, 500)
+$form.Size = New-Object Drawing.Size(560, 540)
 $form.StartPosition = 'CenterScreen'
 $form.Font = New-Object Drawing.Font('Yu Gothic UI', 10)
 
 $label = New-Object Windows.Forms.Label
 $label.Text = "Stream Deck に出すアプリにチェックを入れて「保存」してください。`n" +
-              "Grok アプリストア (AppCatalog) の streamdeck 対応アプリを起動時と「カタログ再取得」で取り込みます。" +
+              "既定で開発中アプリ (Claude Code / Codex / Grok Bot) も表示します。Grok アプリストアは起動時と「カタログ再取得」で取り込みます。" +
               "ストアは非公開のため updater-config.json に githubToken (repo スコープ) が必要です。"
 $label.Location = New-Object Drawing.Point(12, 12)
 $label.Size = New-Object Drawing.Size(520, 66)
 $form.Controls.Add($label)
 
+$chkShowDev = New-Object Windows.Forms.CheckBox
+$chkShowDev.Text = '開発中のアプリも表示'
+$chkShowDev.Checked = [bool](Get-ShowDeveloping $doc)
+$chkShowDev.Location = New-Object Drawing.Point(12, 82)
+$chkShowDev.Size = New-Object Drawing.Size(400, 24)
+$form.Controls.Add($chkShowDev)
+
 $panel = New-Object Windows.Forms.Panel
-$panel.Location = New-Object Drawing.Point(12, 82)
-$panel.Size = New-Object Drawing.Size(520, 230)
+$panel.Location = New-Object Drawing.Point(12, 112)
+$panel.Size = New-Object Drawing.Size(520, 210)
 $panel.AutoScroll = $true
 $panel.BorderStyle = 'FixedSingle'
 $form.Controls.Add($panel)
 
 $status = New-Object Windows.Forms.Label
-$status.Location = New-Object Drawing.Point(12, 366)
-$status.Size = New-Object Drawing.Size(520, 84)
+$status.Location = New-Object Drawing.Point(12, 386)
+$status.Size = New-Object Drawing.Size(520, 100)
 $status.Text = "読み込み: $appsPath"
 $form.Controls.Add($status)
 
 $checks = @{}
 function Read-Checks {
   foreach ($a in @($doc.apps)) {
+    # 非表示 (開発中を隠している) の項目は enabled を触らない
     if ($checks.ContainsKey($a.id)) { $a.enabled = [bool]$checks[$a.id].Checked }
   }
 }
@@ -222,10 +284,12 @@ function Render-Checks {
   $panel.SuspendLayout()
   $panel.Controls.Clear()
   $checks.Clear()
+  $showDev = [bool](Get-ShowDeveloping $doc)
   $y = 4
   foreach ($a in @($doc.apps)) {
+    $st = if ($a.status) { [string]$a.status } else { 'released' }
+    if (-not $showDev -and $st -eq 'developing') { continue }
     $cb = New-Object Windows.Forms.CheckBox
-    $st = if ($a.status) { $a.status } else { 'released' }
     $agent = if ($a.streamdeck) { $a.streamdeck.agent } else { '?' }
     $cat = if ($a.category) { $a.category } else { '-' }
     $cb.Text = "$($a.name)  [$($a.id)]  agent=$agent  ($cat / $st)"
@@ -244,12 +308,15 @@ function Refresh-Catalog {
   $form.Refresh()
   try {
     Read-Checks
+    Set-ShowDeveloping $doc ([bool]$chkShowDev.Checked)
     $r = Get-SdaiCatalog
     if ($r.Ok) {
       $mr = Merge-Catalog $doc $r.Entries
       Render-Checks
       $status.Text = "$($r.Message)`n新規 $($mr.Added) / 更新 $($mr.Updated) — 「保存」で apps.json に反映"
     } else {
+      Ensure-DefaultAgents $doc
+      Render-Checks
       $status.Text = $r.Message
     }
   } finally {
@@ -257,14 +324,21 @@ function Refresh-Catalog {
   }
 }
 
+$chkShowDev.Add_CheckedChanged({
+  Read-Checks
+  Set-ShowDeveloping $doc ([bool]$chkShowDev.Checked)
+  Render-Checks
+})
+
 Render-Checks
 
 $btn = New-Object Windows.Forms.Button
 $btn.Text = '保存'
-$btn.Location = New-Object Drawing.Point(12, 320)
+$btn.Location = New-Object Drawing.Point(12, 336)
 $btn.Size = New-Object Drawing.Size(120, 36)
 $btn.Add_Click({
   Read-Checks
+  Set-ShowDeveloping $doc ([bool]$chkShowDev.Checked)
   Save-Apps $doc
   [Windows.Forms.MessageBox]::Show("保存しました。`n$appsPath", 'StreamDeckAI') | Out-Null
 })
@@ -272,18 +346,18 @@ $form.Controls.Add($btn)
 
 $btnFetch = New-Object Windows.Forms.Button
 $btnFetch.Text = 'カタログ再取得'
-$btnFetch.Location = New-Object Drawing.Point(142, 320)
+$btnFetch.Location = New-Object Drawing.Point(142, 336)
 $btnFetch.Size = New-Object Drawing.Size(140, 36)
 $btnFetch.Add_Click({ Refresh-Catalog })
 $form.Controls.Add($btnFetch)
 
 $btnClose = New-Object Windows.Forms.Button
 $btnClose.Text = '閉じる'
-$btnClose.Location = New-Object Drawing.Point(292, 320)
+$btnClose.Location = New-Object Drawing.Point(292, 336)
 $btnClose.Size = New-Object Drawing.Size(120, 36)
 $btnClose.Add_Click({ $form.Close() })
 $form.Controls.Add($btnClose)
 
-$form.Add_Shown({ Refresh-Catalog })  # 起動時に 1 回だけ自動取得 (失敗してもローカルで動作)
+$form.Add_Shown({ Refresh-Catalog })  # 起動時に 1 回だけ自動取得 (失敗しても Defaults で動作)
 
 [void]$form.ShowDialog()

@@ -31,10 +31,11 @@ cd selector
 .\build.ps1   # .NET 8 SDK が必要。できあがったら %LOCALAPPDATA%\StreamDeckAI\Selector\ へ配置
 ```
 
-- 一覧は `%LOCALAPPDATA%\StreamDeckAI\apps.json` (無ければ Defaults: **claude-code / codex / grok-bot** が ON)
-- 「カタログを再取得」で Grok App Store (`wood-shop/grokAppStore` の `AppCatalog`) を参照。`streamdeck.agent` 付き manifest だけマージ
+- 一覧は `%LOCALAPPDATA%\StreamDeckAI\apps.json` (無ければ Defaults: **claude-code / codex / grok-bot** が ON で即書き込み・表示)
+- UI **「開発中のアプリも表示」** (`showDeveloping`、**既定 ON**)。OFF にすると developing を隠す。Defaults の 3 エージェントはカタログに無くても残る
+- 「カタログを再取得」(起動時も自動) で Grok App Store (`wood-shop/grokAppStore` の `AppCatalog`) を参照。`streamdeck.agent` 付き manifest だけマージ
   - grokAppStore は **非公開** のため、`updater-config.json` の `githubToken` (repo スコープ) か環境変数 `STREAMDECKAI_GITHUB_TOKEN` が必要。無ければ Defaults のみで動作 (詳細 `selector/README.md`)
-- .NET 不要の PowerShell 版: `updater\StreamDeckAI-Selector.ps1` (起動時と「カタログ再取得」でカタログ取り込み)
+- .NET 不要の PowerShell 版: `updater\StreamDeckAI-Selector.ps1` / `sdai-selector.ps1`
 - 「保存してプラグインへ反映」→ `apps.json` 保存 + `POST http://127.0.0.1:17890/apps` (プラグイン再起動不要)
 
 ### 3. プラグイン HTTP の追加

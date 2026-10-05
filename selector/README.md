@@ -19,11 +19,12 @@ Copy-Item -Recurse Defaults ..\dist\Selector\Defaults
 
 ## 動作
 
-1. `%LOCALAPPDATA%\StreamDeckAI\apps.json` を読み込み (無ければ Defaults: claude-code / codex / grok-bot、カテゴリ「ツール」)
-2. 「カタログを再取得」(PowerShell 版は起動時にも 1 回自動) で `wood-shop/grokAppStore` の `AppCatalog/*/manifest.json` を取得し、`streamdeck.agent` が `claude` / `codex` / `grok` のものだけマージ
+1. `%LOCALAPPDATA%\StreamDeckAI\apps.json` を読み込み (無ければ Defaults: claude-code / codex / grok-bot、カテゴリ「ツール」、**enabled=true** を即書き込みして表示)
+2. UI トグル **「開発中のアプリも表示」** (`showDeveloping`、**既定 true**)。ON なら status=developing も一覧に出す。OFF なら公開済のみ。Defaults の 3 エージェントはカタログから外れていても常にローカルに残る
+3. 「カタログを再取得」(C# / PowerShell とも **起動時にも 1 回自動**) で `wood-shop/grokAppStore` の `AppCatalog/*/manifest.json` を取得し、`streamdeck.agent` が `claude` / `codex` / `grok` のものだけマージ。トークン無しでも Defaults を空にしない
    - 一覧も manifest も **GitHub Contents API** (`https://api.github.com/repos/wood-shop/grokAppStore/contents/AppCatalog/{フォルダ}/manifest.json`) で取得し、`content` (base64) をデコード。非公開リポジトリでは使えない `raw.githubusercontent.com` は使いません
    - 既に一覧にある id は **ローカルのチェック状態 (enabled) を保持** し、名前・カテゴリ・状態・agent をカタログの値で更新。新規 id は `streamdeck.enabledDefault` で初期チェック
-3. 「保存してプラグインへ反映」で apps.json 保存 + `POST http://127.0.0.1:17890/apps`
+4. 「保存してプラグインへ反映」で apps.json 保存 + `POST http://127.0.0.1:17890/apps`
 
 ## カタログは非公開リポジトリ — GitHub トークンが必要
 
@@ -39,13 +40,9 @@ Grok アプリストア (`wood-shop/grokAppStore`) は private のため、未�
 
 トークンが無い/無効なときは日本語のメッセージを表示し、ローカルの apps.json / 同梱 Defaults で動作を続けます。トークンはリポジトリにコミットしないでください。
 
-## 現在カタログに載っている streamdeck 対応アプリ
+## Defaults とカタログ
 
-| フォルダ | id | streamdeck.agent |
-|---|---|---|
-| `AppCatalog/Claude Code` | `claude-code` | `claude` |
-| `AppCatalog/Codex CLI` | `codex` | `codex` |
-| `AppCatalog/Grok Bot` | `grok-bot` | `grok` |
+AppCatalog の個別 Claude/Codex/Grok エントリは撤去済みで、公開カタログは StreamDeckAI 本体側。セレクタは **Defaults** (`claude-code` / `codex` / `grok-bot`、status=developing) を常にソースとして残し、起動直後から一覧に出します。
 
 ## 動作確認 (UI なし)
 

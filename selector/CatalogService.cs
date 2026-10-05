@@ -32,22 +32,64 @@ internal sealed class CatalogService
     {
         if (File.Exists(_appsPath))
         {
-            try { return JsonSerializer.Deserialize<AppsFile>(File.ReadAllText(_appsPath, Encoding.UTF8)) ?? Defaults(); }
+            try
+            {
+                var loaded = JsonSerializer.Deserialize<AppsFile>(File.ReadAllText(_appsPath, Encoding.UTF8));
+                if (loaded is not null)
+                {
+                    var missingShowDev = loaded.ShowDeveloping is null;
+                    EnsureDefaultsAgents(loaded);
+                    if (missingShowDev)
+                        SaveLocal(loaded); // persist showDeveloping:true for legacy apps.json
+                    return loaded;
+                }
+            }
             catch { /* fallthrough */ }
         }
         var d = Defaults();
+        d.ShowDeveloping = true;
         SaveLocal(d);
         return d;
     }
 
+    /// <summary>
+    /// Ensure the three Default agents exist (catalog may only ship StreamDeckAI as released).
+    /// Missing showDeveloping (null) defaults to ON; explicit false is preserved.
+    /// </summary>
+    internal static void EnsureDefaultsAgents(AppsFile file)
+    {
+        // If file has no apps at all, fill from builtin (never empty list).
+        if (file.Apps is null || file.Apps.Count == 0)
+        {
+            var b = Builtin();
+            file.Apps = b.Apps;
+            file.ShowDeveloping ??= true;
+            if (string.IsNullOrWhiteSpace(file.Source)) file.Source = "defaults";
+            return;
+        }
+        var byId = file.Apps.ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
+        foreach (var def in Builtin().Apps)
+        {
+            if (!byId.ContainsKey(def.Id))
+                file.Apps.Add(def);
+        }
+        // Legacy files without the key keep default ON (null → true via ShowDevelopingOrDefault).
+        file.ShowDeveloping ??= true;
+    }
+
     public AppsFile Defaults()
     {
+        AppsFile? d = null;
         if (File.Exists(_defaultsPath))
         {
-            try { return JsonSerializer.Deserialize<AppsFile>(File.ReadAllText(_defaultsPath, Encoding.UTF8)) ?? Builtin(); }
+            try { d = JsonSerializer.Deserialize<AppsFile>(File.ReadAllText(_defaultsPath, Encoding.UTF8)); }
             catch { /* */ }
         }
-        return Builtin();
+        d ??= Builtin();
+        // Bundled defaults always show developing agents (claude/codex/grok).
+        d.ShowDeveloping = true;
+        if (d.Apps is null || d.Apps.Count == 0) d = Builtin();
+        return d;
     }
 
     private static AppsFile Builtin() => new()
@@ -55,6 +97,7 @@ internal sealed class CatalogService
         Schema = 1,
         UpdatedAt = DateTimeOffset.Now.ToString("o"),
         Source = "defaults",
+        ShowDeveloping = true,
         Apps =
         [
             new CatalogApp { Id = "claude-code", Name = "Claude Code", Category = "ツール", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "claude", EnabledDefault = true } },
@@ -273,6 +316,7 @@ internal sealed class CatalogService
         Schema = src.Schema,
         UpdatedAt = src.UpdatedAt,
         Source = src.Source,
+        ShowDeveloping = src.ShowDeveloping,
         Apps = src.Apps.Select(a => new CatalogApp
         {
             Id = a.Id,

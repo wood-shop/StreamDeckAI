@@ -2,6 +2,7 @@
   "schema": 1,
   "updatedAt": "2026-10-05T21:00:00+09:00",
   "source": "defaults",
+  "showDeveloping": true,
   "apps": [
     {
       "id": "claude-code",

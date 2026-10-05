@@ -3,32 +3,73 @@
   "$id": "https://wood-shop.example/streamdeckai/apps.schema.json",
   "title": "StreamDeckAI apps.json",
   "type": "object",
-  "required": ["schema", "apps"],
+  "required": [
+    "schema",
+    "apps"
+  ],
   "properties": {
-    "schema": { "const": 1 },
-    "updatedAt": { "type": "string" },
-    "source": { "type": "string" },
+    "schema": {
+      "const": 1
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
     "apps": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "enabled"],
+        "required": [
+          "id",
+          "name",
+          "enabled"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "category": { "type": "string" },
-          "status": { "enum": ["developing", "released"] },
-          "enabled": { "type": "boolean" },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "developing",
+              "released"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
           "streamdeck": {
             "type": "object",
-            "required": ["agent"],
+            "required": [
+              "agent"
+            ],
             "properties": {
-              "agent": { "enum": ["claude", "codex", "grok"] },
-              "enabledDefault": { "type": "boolean" }
+              "agent": {
+                "enum": [
+                  "claude",
+                  "codex",
+                  "grok"
+                ]
+              },
+              "enabledDefault": {
+                "type": "boolean"
+              }
             }
           }
         }
       }
+    },
+    "showDeveloping": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true (default), list apps with status developing alongside released."
     }
   }
 }
