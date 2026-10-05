@@ -57,9 +57,9 @@ internal sealed class CatalogService
         Source = "defaults",
         Apps =
         [
-            new CatalogApp { Id = "claude-code", Name = "Claude Code", Category = "agent", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "claude", EnabledDefault = true } },
-            new CatalogApp { Id = "codex", Name = "Codex CLI", Category = "agent", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "codex", EnabledDefault = true } },
-            new CatalogApp { Id = "grok-bot", Name = "Grok Bot", Category = "agent", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "grok", EnabledDefault = true } },
+            new CatalogApp { Id = "claude-code", Name = "Claude Code", Category = "ツール", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "claude", EnabledDefault = true } },
+            new CatalogApp { Id = "codex", Name = "Codex CLI", Category = "ツール", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "codex", EnabledDefault = true } },
+            new CatalogApp { Id = "grok-bot", Name = "Grok Bot", Category = "ツール", Status = "developing", Enabled = true, Streamdeck = new StreamDeckMeta { Agent = "grok", EnabledDefault = true } },
         ],
     };
 
@@ -71,82 +71,173 @@ internal sealed class CatalogService
         File.WriteAllText(_appsPath, JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
     }
 
+    private const string CatalogOwner = "wood-shop";
+    private const string CatalogRepo = "grokAppStore";
+    private const string CatalogDir = "AppCatalog";
+    private static readonly string[] KnownAgents = ["claude", "codex", "grok"];
+
     /// <summary>
-    /// wood-shop/grokAppStore の AppCatalog から streamdeck 付き manifest を取り込みマージ。
-    /// 現状のカタログに streamdeck が無い場合はローカルをそのまま返す。
+    /// GitHub トークンを解決する。優先順:
+    /// 1. 環境変数 STREAMDECKAI_GITHUB_TOKEN
+    /// 2. %LOCALAPPDATA%\StreamDeckAI\updater-config.json の githubToken (アップデータと共用)
+    /// </summary>
+    public static string? ResolveGithubToken()
+    {
+        var env = Environment.GetEnvironmentVariable("STREAMDECKAI_GITHUB_TOKEN");
+        if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
+        try
+        {
+            var cfg = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StreamDeckAI", "updater-config.json");
+            if (File.Exists(cfg))
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(cfg, Encoding.UTF8));
+                if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+                    doc.RootElement.TryGetProperty("githubToken", out var t) && t.ValueKind == JsonValueKind.String)
+                {
+                    var v = t.GetString();
+                    if (!string.IsNullOrWhiteSpace(v)) return v.Trim();
+                }
+            }
+        }
+        catch { /* 読めなければトークン無し扱い */ }
+        return null;
+    }
+
+    private static HttpRequestMessage GithubRequest(string url, string? token)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Accept.Clear();
+        req.Headers.TryAddWithoutValidation("Accept", "application/vnd.github+json");
+        req.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
+        if (!string.IsNullOrWhiteSpace(token))
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return req;
+    }
+
+    private static string ContentsUrl(string path) =>
+        $"https://api.github.com/repos/{CatalogOwner}/{CatalogRepo}/contents/" +
+        string.Join('/', path.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
+
+    private static string AuthErrorMessage(int status, bool hasToken)
+    {
+        if (!hasToken)
+            return $"カタログ取得失敗 HTTP {status}: grokAppStore は非公開リポジトリのため GitHub トークンが必要です。" +
+                   "%LOCALAPPDATA%\\StreamDeckAI\\updater-config.json の \"githubToken\" に repo スコープのトークンを設定してください " +
+                   "(または環境変数 STREAMDECKAI_GITHUB_TOKEN)。ローカル/同梱 Defaults で動作を続けます。";
+        return status == 401
+            ? $"カタログ取得失敗 HTTP 401: githubToken が無効または期限切れです。updater-config.json のトークンを更新してください (ローカルのみ使用)。"
+            : $"カタログ取得失敗 HTTP {status}: トークンに wood-shop/grokAppStore の読み取り権限 (repo スコープ) がありません (ローカルのみ使用)。";
+    }
+
+    /// <summary>
+    /// wood-shop/grokAppStore (非公開) の AppCatalog から streamdeck 付き manifest を取り込みマージ。
+    /// 一覧・manifest とも GitHub Contents API (base64 の content) で取得する。raw.githubusercontent.com は非公開リポジトリで使えないため使わない。
+    /// 既知 id のローカル enabled 状態は保持する。
     /// </summary>
     public async Task<(AppsFile File, string Message)> FetchAndMergeAsync(AppsFile local, CancellationToken ct = default)
     {
-        const string api = "https://api.github.com/repos/wood-shop/grokAppStore/contents/AppCatalog";
+        var token = ResolveGithubToken();
+        var hasToken = !string.IsNullOrWhiteSpace(token);
         try
         {
-            using var res = await Http.GetAsync(api, ct);
+            using var listReq = GithubRequest(ContentsUrl(CatalogDir), token);
+            using var res = await Http.SendAsync(listReq, ct);
+            var status = (int)res.StatusCode;
+            if (status is 401 or 403 or 404)
+                return (local, status == 403 && res.Headers.TryGetValues("X-RateLimit-Remaining", out var rl) && rl.FirstOrDefault() == "0"
+                    ? "カタログ取得失敗 HTTP 403: GitHub API のレート制限に達しました。しばらく待つか githubToken を設定してください (ローカルのみ使用)。"
+                    : AuthErrorMessage(status, hasToken));
             if (!res.IsSuccessStatusCode)
-                return (local, $"カタログ取得失敗 HTTP {(int)res.StatusCode} (ローカルのみ使用)");
+                return (local, $"カタログ取得失敗 HTTP {status} (ローカルのみ使用)");
             using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
             if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                return (local, "カタログ形式が想定外です");
+                return (local, "カタログ形式が想定外です (ローカルのみ使用)");
 
             var merged = Clone(local);
             var byId = merged.Apps.ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
-            var added = 0;
+            int added = 0, updated = 0, failed = 0;
             foreach (var entry in doc.RootElement.EnumerateArray())
             {
-                if (entry.TryGetProperty("type", out var t) && t.GetString() != "dir") continue;
+                if (!entry.TryGetProperty("type", out var t) || t.GetString() != "dir") continue;
                 if (!entry.TryGetProperty("name", out var nameEl)) continue;
                 var folder = nameEl.GetString();
-                if (string.IsNullOrWhiteSpace(folder) || folder == "removed.json") continue;
-                var url = entry.TryGetProperty("url", out var u) ? u.GetString() : null;
-                // contents API で子を取るより raw の方が簡単
-                var raw = $"https://raw.githubusercontent.com/wood-shop/grokAppStore/main/AppCatalog/{Uri.EscapeDataString(folder)}/manifest.json";
+                if (string.IsNullOrWhiteSpace(folder)) continue;
+                var dirPath = entry.TryGetProperty("path", out var pEl) && !string.IsNullOrWhiteSpace(pEl.GetString())
+                    ? pEl.GetString()!
+                    : $"{CatalogDir}/{folder}";
                 try
                 {
-                    var text = await Http.GetStringAsync(raw, ct);
+                    using var manReq = GithubRequest(ContentsUrl($"{dirPath}/manifest.json"), token);
+                    using var manRes = await Http.SendAsync(manReq, ct);
+                    if (manRes.StatusCode == System.Net.HttpStatusCode.NotFound) continue; // manifest 無しフォルダ
+                    if (!manRes.IsSuccessStatusCode) { failed++; continue; }
+                    using var meta = JsonDocument.Parse(await manRes.Content.ReadAsStringAsync(ct));
+                    var text = DecodeContent(meta.RootElement);
+                    if (text is null) { failed++; continue; }
                     using var man = JsonDocument.Parse(text);
                     var root = man.RootElement;
                     if (!root.TryGetProperty("streamdeck", out var sd) || sd.ValueKind != JsonValueKind.Object) continue;
-                    if (!sd.TryGetProperty("agent", out var agentEl)) continue;
-                    var agent = agentEl.GetString() ?? "";
-                    if (agent is not ("claude" or "codex" or "grok")) continue;
+                    if (!sd.TryGetProperty("agent", out var agentEl) || agentEl.ValueKind != JsonValueKind.String) continue;
+                    var agent = (agentEl.GetString() ?? "").Trim().ToLowerInvariant();
+                    if (!KnownAgents.Contains(agent)) continue; // プラグイン側が claude|codex|grok のみ受け付ける
                     var id = root.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
                     if (string.IsNullOrWhiteSpace(id))
                         id = (root.TryGetProperty("name", out var n) ? n.GetString() : folder)!.ToLowerInvariant().Replace(' ', '-');
                     var enabledDefault = sd.TryGetProperty("enabledDefault", out var ed) && ed.ValueKind == JsonValueKind.True;
+                    string? Str(string key) => root.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
                     if (byId.TryGetValue(id, out var existing))
                     {
-                        existing.Name = root.TryGetProperty("name", out var nm) ? nm.GetString() ?? existing.Name : existing.Name;
-                        existing.Category = root.TryGetProperty("category", out var cat) ? cat.GetString() : existing.Category;
-                        existing.Status = root.TryGetProperty("status", out var st) ? st.GetString() : existing.Status;
+                        // ローカルの enabled は保持
+                        existing.Name = Str("name") ?? existing.Name;
+                        existing.Category = Str("category") ?? existing.Category;
+                        existing.Status = Str("status") ?? existing.Status;
                         existing.Streamdeck = new StreamDeckMeta { Agent = agent, EnabledDefault = enabledDefault };
+                        updated++;
                     }
                     else
                     {
-                        var app = new CatalogApp
+                        byId[id] = new CatalogApp
                         {
                             Id = id,
-                            Name = root.TryGetProperty("name", out var nm) ? nm.GetString() ?? id : id,
-                            Category = root.TryGetProperty("category", out var cat) ? cat.GetString() : "agent",
-                            Status = root.TryGetProperty("status", out var st) ? st.GetString() : "released",
+                            Name = Str("name") ?? id,
+                            Category = Str("category") ?? "ツール",
+                            Status = Str("status") ?? "released",
                             Enabled = enabledDefault,
                             Streamdeck = new StreamDeckMeta { Agent = agent, EnabledDefault = enabledDefault },
                         };
-                        byId[id] = app;
                         added++;
                     }
                 }
+                catch (OperationCanceledException) { throw; }
                 catch
                 {
-                    // 個別失敗は無視
+                    failed++; // 個別失敗は集計のみ
                 }
             }
-            merged.Apps = byId.Values.OrderBy(a => a.Name).ToList();
+            merged.Apps = byId.Values.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
             merged.Source = "local+catalog";
-            return (merged, added > 0 ? $"カタログから {added} 件追加" : "カタログを確認しました (streamdeck 付きの新規はありません。Defaults を使用中)");
+            var msg = $"カタログ取得OK: streamdeck 対応 {added + updated} 件 (新規 {added} / 更新 {updated})";
+            if (failed > 0) msg += $"、取得失敗 {failed} 件";
+            return (merged, msg);
         }
+        catch (OperationCanceledException) { return (local, "カタログ取得を中止しました (ローカルのみ使用)"); }
         catch (Exception ex)
         {
-            return (local, $"カタログ取得エラー: {ex.Message}");
+            return (local, $"カタログ取得エラー: {ex.Message} (ローカルのみ使用)");
         }
+    }
+
+    /// <summary>Contents API 応答の base64 content を UTF-8 文字列に戻す。</summary>
+    internal static string? DecodeContent(JsonElement meta)
+    {
+        if (meta.ValueKind != JsonValueKind.Object) return null;
+        if (!meta.TryGetProperty("content", out var c) || c.ValueKind != JsonValueKind.String) return null;
+        var enc = meta.TryGetProperty("encoding", out var e) ? e.GetString() : "base64";
+        var raw = c.GetString() ?? "";
+        if (!string.Equals(enc, "base64", StringComparison.OrdinalIgnoreCase)) return raw;
+        var b64 = raw.Replace("\n", "").Replace("\r", "").Trim();
+        var text = Encoding.UTF8.GetString(Convert.FromBase64String(b64));
+        return text.Length > 0 && text[0] == '\uFEFF' ? text[1..] : text;
     }
 
     public async Task<(bool Ok, string Message)> PostToPluginAsync(AppsFile file, int port = 17890, CancellationToken ct = default)

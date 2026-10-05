@@ -6,7 +6,7 @@
     {
       "id": "claude-code",
       "name": "Claude Code",
-      "category": "agent",
+      "category": "ツール",
       "status": "developing",
       "enabled": true,
       "streamdeck": { "agent": "claude", "enabledDefault": true }
@@ -14,7 +14,7 @@
     {
       "id": "codex",
       "name": "Codex CLI",
-      "category": "agent",
+      "category": "ツール",
       "status": "developing",
       "enabled": true,
       "streamdeck": { "agent": "codex", "enabledDefault": true }
@@ -22,7 +22,7 @@
     {
       "id": "grok-bot",
       "name": "Grok Bot",
-      "category": "agent",
+      "category": "ツール",
       "status": "developing",
       "enabled": true,
       "streamdeck": { "agent": "grok", "enabledDefault": true }

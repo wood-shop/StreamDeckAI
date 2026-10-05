@@ -4,14 +4,14 @@ internal sealed class MainForm : Form
 {
     private readonly CatalogService _svc = new();
     private readonly CheckedListBox _list = new() { Dock = DockStyle.Fill, CheckOnClick = true, Font = new Font("Yu Gothic UI", 10f) };
-    private readonly Label _status = new() { Dock = DockStyle.Bottom, Height = 28, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly Label _status = new() { Dock = DockStyle.Bottom, Height = 56, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(8, 0, 8, 0) };
     private AppsFile _apps = new();
 
     public MainForm()
     {
         Text = "StreamDeckAI アプリ選択";
-        Width = 520;
-        Height = 420;
+        Width = 560;
+        Height = 460;
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Yu Gothic UI", 9f);
 
@@ -27,9 +27,9 @@ internal sealed class MainForm : Form
         var hint = new Label
         {
             Dock = DockStyle.Top,
-            Height = 36,
+            Height = 52,
             Padding = new Padding(8, 4, 8, 4),
-            Text = "Stream Deck に出す開発中アプリにチェックを付けて保存します。既定: Claude Code / Codex / Grok Bot",
+            Text = "Stream Deck に出す開発中アプリにチェックを付けて保存します。「カタログを再取得」で Grok アプリストア (AppCatalog) の streamdeck 対応アプリを取り込みます。ストアは非公開のため updater-config.json の githubToken が必要です。",
         };
 
         Controls.Add(_list);

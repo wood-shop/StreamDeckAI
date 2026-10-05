@@ -1,5 +1,11 @@
 # 変更履歴
 
+## 未リリース (main)
+### 修正
+- **セレクタのカタログ取得** (C# `selector/CatalogService.cs` / PowerShell `updater/StreamDeckAI-Selector.ps1`・`sdai-selector.ps1`): 非公開の `wood-shop/grokAppStore` に対応。トークンを `STREAMDECKAI_GITHUB_TOKEN` → `updater-config.json` の `githubToken` の順で読み、`Authorization: Bearer` を付与。manifest は `raw.githubusercontent.com` ではなく Contents API (base64) で取得。401/404 時は日本語で githubToken 設定を案内し、ローカル Defaults で継続。
+- PowerShell セレクタに「カタログ再取得」ボタンと起動時の自動取得、`-FetchOnly` (UI なし確認) を追加。既知 id のチェック状態は保持。ファイルを UTF-8 BOM 付きに (Windows PowerShell 5.1 の文字化け防止)。
+- セレクタ Defaults のカテゴリを `agent` → `ツール` (ストアと統一)。
+
 ## v0.3.0 (2026-10-05)
 ### 追加
 - **完全自動アップデート** (`updater/`): 起動時と 6 時間ごとに GitHub Releases または `versionJsonUrl` の `version.json` を確認し、新しければ確認なしでプラグインを差し替え。失敗時はバックアップ復元・ログ・任意トースト。HKCU Run / Startup `.bat` でログオン時起動 (管理者不要)。PowerShell 版 + .NET 8 ソース。
