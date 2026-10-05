@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "githubOwner": "wood-shop",
+  "githubRepo": "StreamDeckAI",
+  "githubToken": "",
+  "versionJsonUrl": "",
+  "checkIntervalHours": 6,
+  "assetNamePrefix": "streamdeckai-",
+  "toastOnError": true
+}

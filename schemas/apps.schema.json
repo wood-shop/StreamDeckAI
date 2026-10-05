@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wood-shop.example/streamdeckai/apps.schema.json",
+  "title": "StreamDeckAI apps.json",
+  "type": "object",
+  "required": ["schema", "apps"],
+  "properties": {
+    "schema": { "const": 1 },
+    "updatedAt": { "type": "string" },
+    "source": { "type": "string" },
+    "apps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "enabled"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "status": { "enum": ["developing", "released"] },
+          "enabled": { "type": "boolean" },
+          "streamdeck": {
+            "type": "object",
+            "required": ["agent"],
+            "properties": {
+              "agent": { "enum": ["claude", "codex", "grok"] },
+              "enabledDefault": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

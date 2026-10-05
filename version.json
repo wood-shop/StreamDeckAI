@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "version": "0.3.0.0",
+  "zipUrl": "https://github.com/wood-shop/StreamDeckAI/releases/download/v0.3.0/streamdeckai-v0.3.zip",
+  "sha256": "7318c21edf0d1570ae4e9aaf93225d3b4112bf3fd7452f6f09833c4d70b2c5be",
+  "notes": "v0.3: 自動アップデート、アプリセレクタ、Grok App Store カタログ連携、GET/POST /apps、GET /version、Windows CFA 向け sdai-plugin.js / sdai-hook.ps1",
+  "publishedAt": "2026-10-06T04:30:00+09:00"
+}

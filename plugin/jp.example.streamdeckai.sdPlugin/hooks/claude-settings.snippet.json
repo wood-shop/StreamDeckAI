@@ -1,0 +1,8 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "\"C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -File \"C:/PATH/TO/sdai-hook.ps1\" -Agent claude" }] }],
+    "Notification":     [{ "hooks": [{ "type": "command", "command": "\"C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -File \"C:/PATH/TO/sdai-hook.ps1\" -Agent claude" }] }],
+    "Stop":             [{ "hooks": [{ "type": "command", "command": "\"C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -File \"C:/PATH/TO/sdai-hook.ps1\" -Agent claude" }] }],
+    "PostToolUse":      [{ "hooks": [{ "type": "command", "command": "\"C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -File \"C:/PATH/TO/sdai-hook.ps1\" -Agent claude" }] }]
+  }
+}

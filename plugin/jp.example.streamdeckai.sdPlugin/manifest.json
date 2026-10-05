@@ -1,0 +1,84 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+	"UUID": "jp.example.streamdeckai",
+	"Name": "StreamDeckAI",
+	"Version": "0.3.0.0",
+	"Author": "sekiguchi",
+	"Description": "AI エージェント(Claude Code / Codex CLI / Grok)の作業状態をボタンで見て、押すと Windows Terminal のタブへ移動し、完了・確認待ちを音声で知らせます。v0.3: 自動更新・アプリ選択・Grok App Store 連携。",
+	"Category": "StreamDeckAI",
+	"CategoryIcon": "imgs/category",
+	"Icon": "imgs/plugin",
+	"CodePath": "bin/sdai-plugin.js",
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "7.6"
+	},
+	"OS": [
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"Actions": [
+		{
+			"UUID": "jp.example.streamdeckai.space",
+			"Name": "Space(プロジェクト)",
+			"Tooltip": "プロジェクト(作業フォルダ)単位のスペース。上段に置く。押すと下段のタブを切り替える。",
+			"Icon": "imgs/actions/space",
+			"Controllers": [
+				"Keypad"
+			],
+			"PropertyInspectorPath": "ui/pi.html",
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/actions/space-key",
+					"ShowTitle": false
+				}
+			]
+		},
+		{
+			"UUID": "jp.example.streamdeckai.tab",
+			"Name": "Tab(セッション)",
+			"Tooltip": "選択中スペースのセッション。下段に置く。押すと Windows Terminal のタブへ移動する。",
+			"Icon": "imgs/actions/tab",
+			"Controllers": [
+				"Keypad"
+			],
+			"PropertyInspectorPath": "ui/pi.html",
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/actions/tab-key",
+					"ShowTitle": false
+				}
+			]
+		},
+		{
+			"UUID": "jp.example.streamdeckai.infobar",
+			"Name": "InfoBar(状態の件数・使用率)",
+			"Tooltip": "Stream Deck Neo のインフォバー。作業中/確認待ち/完了の件数、選択中タブ名、Claude のコンテキスト使用率を表示する。",
+			"Icon": "imgs/actions/infobar",
+			"Controllers": [
+				"Neo"
+			],
+			"PropertyInspectorPath": "ui/pi.html",
+			"SupportedInMultiActions": false,
+			"Encoder": {
+				"layout": "layouts/infobar.json",
+				"Icon": "imgs/actions/infobar-key"
+			},
+			"States": [
+				{
+					"Image": "imgs/actions/infobar-key"
+				}
+			]
+		}
+	]
+}

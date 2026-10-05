@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>StreamDeckAI 設定</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 13px 'Segoe UI','Yu Gothic UI','Meiryo UI',sans-serif; background: #2d2d2d; color: #d8d8d8; margin: 0; padding: 8px 12px 16px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; min-height: 26px; }
+  .row > label:first-child { flex: 0 0 96px; color: #969696; }
+  input[type=text], input[type=number], select { flex: 1; min-width: 0; background: #3d3d3d; color: #d8d8d8; border: 1px solid #1c1c1c; border-radius: 3px; padding: 4px 6px; font: inherit; }
+  h4 { margin: 16px 0 4px; font-size: 12px; color: #969696; border-bottom: 1px solid #444; padding-bottom: 4px; }
+  .hint { color: #8a8a8a; font-size: 11px; line-height: 1.5; }
+  code { background: #3d3d3d; padding: 1px 4px; border-radius: 3px; user-select: all; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div id="slotBox" hidden>
+    <div class="row">
+      <label for="slot">スロット</label>
+      <select id="slot"></select>
+    </div>
+    <div class="hint" id="slotHint"></div>
+  </div>
+
+  <h4>共通設定(全ボタンで共有)</h4>
+  <div class="row"><label for="port">ポート</label><input type="number" id="port" min="1024" max="65535" /></div>
+  <div class="row"><label for="narration">読み上げ</label><input type="checkbox" id="narration" /><span class="hint">完了・確認待ちを音声で知らせる</span></div>
+  <div class="row"><label for="narrationStyle">読み上げ方</label>
+    <select id="narrationStyle">
+      <option value="summary">要約あり</option>
+      <option value="template">定型文のみ</option>
+      <option value="sound">効果音のみ</option>
+    </select></div>
+  <div class="hint">要約あり: 完了時に、直近の返答から「何をしたか・次にすること」を端末内で抜き出して読みます(AI は使いません)。効果音のみ: Windows の通知音だけ(取り消しにくい操作の確認待ちは、安全のため短く読み上げます)。</div>
+  <div class="row"><label for="includeMessage">本文を読む</label><input type="checkbox" id="includeMessage" /><span class="hint">イベントの message を読み上げに含める</span></div>
+  <div class="row"><label for="voiceName">音声名</label><input type="text" id="voiceName" placeholder="空欄 = 日本語(ja-JP)を自動選択" /></div>
+  <div class="row"><label for="rate">速さ(-10〜10)</label><input type="number" id="rate" min="-10" max="10" /></div>
+  <div class="row"><label for="contextWindow">文脈の上限</label>
+    <select id="contextWindow">
+      <option value="200000">200,000 トークン(標準)</option>
+      <option value="1000000">1,000,000 トークン(1M)</option>
+    </select></div>
+  <div class="hint">インフォバーの使用率の分母です。1M のモデルを使うときだけ 1,000,000 にしてください。</div>
+  <div class="row"><label for="ttlHours">残す時間</label><input type="number" id="ttlHours" min="1" max="168" /><span class="hint">時間(更新が無いと消える)</span></div>
+  <div class="row"><label for="powershellPath">PowerShell</label><input type="text" id="powershellPath" placeholder="空欄 = %SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" /></div>
+  <div class="hint">イベントの送り先: <code id="endpoint">http://127.0.0.1:17890/event</code><br />ポートを変えたらフック側の <code>STREAMDECKAI_PORT</code> も合わせてください。</div>
+
+<script>
+  const GLOBAL_DEFAULTS = { port: 17890, narration: true, includeMessage: true, voiceName: '', rate: 1, ttlHours: 12, powershellPath: '', narrationStyle: 'summary', contextWindow: 200000 };
+  let ws = null, ctx = '', settings = {}, globals = { ...GLOBAL_DEFAULTS };
+  const $ = (id) => document.getElementById(id);
+
+  function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+  function fillSlots() {
+    const sel = $('slot');
+    sel.innerHTML = '';
+    const auto = document.createElement('option');
+    auto.value = ''; auto.textContent = '自動(列番号)';
+    sel.appendChild(auto);
+    for (let i = 1; i <= 16; i++) {
+      const o = document.createElement('option');
+      o.value = String(i); o.textContent = String(i);
+      sel.appendChild(o);
+    }
+  }
+
+  // 設定ファイルに手で書かれた 200000/1000000 以外の値も、選択肢として残す
+  function ensureOption(sel, v) {
+    if (!v || [...sel.options].some((o) => o.value === String(v))) return;
+    const o = document.createElement('option');
+    o.value = String(v); o.textContent = Number(v).toLocaleString('en-US') + ' トークン(設定値)';
+    sel.appendChild(o);
+  }
+
+  function render() {
+    $('slot').value = settings.slot ? String(settings.slot) : '';
+    $('port').value = globals.port;
+    $('narration').checked = !!globals.narration;
+    $('includeMessage').checked = !!globals.includeMessage;
+    $('voiceName').value = globals.voiceName || '';
+    $('narrationStyle').value = globals.narrationStyle || 'summary';
+    ensureOption($('contextWindow'), globals.contextWindow);
+    $('contextWindow').value = String(globals.contextWindow);
+    $('rate').value = globals.rate;
+    $('ttlHours').value = globals.ttlHours;
+    $('powershellPath').value = globals.powershellPath || '';
+    $('endpoint').textContent = 'http://127.0.0.1:' + globals.port + '/event';
+  }
+
+  function saveAction() {
+    // select の値は文字列で保存されるので数値に直す(プラグイン側でも直す)
+    const v = $('slot').value;
+    settings = { ...settings, slot: v ? Number(v) : undefined };
+    send({ event: 'setSettings', context: ctx, payload: settings });
+  }
+
+  function saveGlobal() {
+    globals = {
+      port: Number($('port').value) || GLOBAL_DEFAULTS.port,
+      narration: $('narration').checked,
+      includeMessage: $('includeMessage').checked,
+      voiceName: $('voiceName').value.trim(),
+      rate: Number($('rate').value) || 0,
+      ttlHours: Number($('ttlHours').value) || GLOBAL_DEFAULTS.ttlHours,
+      powershellPath: $('powershellPath').value.trim(),
+      narrationStyle: $('narrationStyle').value,
+      contextWindow: Number($('contextWindow').value) || GLOBAL_DEFAULTS.contextWindow,
+    };
+    $('endpoint').textContent = 'http://127.0.0.1:' + globals.port + '/event';
+    send({ event: 'setGlobalSettings', context: ctx, payload: globals });
+  }
+
+  // Stream Deck が呼ぶエントリポイント
+  function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
+    ctx = inUUID;
+    const info = JSON.parse(inActionInfo);
+    settings = (info.payload && info.payload.settings) || {};
+    const kind = String(info.action || '').split('.').pop();
+    $('slotBox').hidden = !(kind === 'space' || kind === 'tab');
+    $('slotHint').textContent = kind === 'space'
+      ? '上段: n 番目のスペースを表示します。ページ2に 5〜8 を置けば 5 つ目以降も見られます。'
+      : '下段: 選択中スペースの n 番目のタブ。1〜4 は 5 タブ以上のとき再押下で次の 4 つに切り替わります。';
+    fillSlots();
+    ws = new WebSocket('ws://127.0.0.1:' + inPort);
+    ws.onopen = () => {
+      send({ event: inRegisterEvent, uuid: inUUID });
+      send({ event: 'getGlobalSettings', context: inUUID });
+      render();
+    };
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.event === 'didReceiveGlobalSettings') {
+        globals = { ...GLOBAL_DEFAULTS, ...((msg.payload && msg.payload.settings) || {}) };
+        render();
+      }
+    };
+  }
+  window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
+
+  $('slot').addEventListener('change', saveAction);
+  ['port', 'rate', 'ttlHours', 'voiceName', 'powershellPath'].forEach((id) => $(id).addEventListener('change', saveGlobal));
+  ['narrationStyle', 'contextWindow'].forEach((id) => $(id).addEventListener('change', saveGlobal));
+  ['narration', 'includeMessage'].forEach((id) => $(id).addEventListener('change', saveGlobal));
+</script>
+</body>
+</html>

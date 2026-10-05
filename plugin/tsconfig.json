@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "customConditions": ["node"],
+    "sourceMap": false,
+    "outDir": "jp.example.streamdeckai.sdPlugin/bin",
+    "noEmit": false
+  },
+  "include": ["src/**/*.ts"]
+}

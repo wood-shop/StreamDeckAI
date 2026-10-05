@@ -1,0 +1,33 @@
+# dependencies / build
+**/node_modules/
+plugin/jp.example.streamdeckai.sdPlugin/bin/*.map
+dist/
+**/bin/Debug/
+**/bin/Release/
+**/obj/
+
+# runtime / local
+**/logs/
+*.log
+.DS_Store
+Thumbs.db
+
+# secrets / local config
+**/updater-config.json
+!**/*.sample.json
+.env
+.env.*
+*.pem
+*.key
+ghp_*
+gho_*
+github_pat_*
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+
+# release artifacts live on GitHub Releases (not in tree)
+*.zip

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-10-05T21:00:00+09:00",
+  "source": "defaults",
+  "apps": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "category": "agent",
+      "status": "developing",
+      "enabled": true,
+      "streamdeck": { "agent": "claude", "enabledDefault": true }
+    },
+    {
+      "id": "codex",
+      "name": "Codex CLI",
+      "category": "agent",
+      "status": "developing",
+      "enabled": true,
+      "streamdeck": { "agent": "codex", "enabledDefault": true }
+    },
+    {
+      "id": "grok-bot",
+      "name": "Grok Bot",
+      "category": "agent",
+      "status": "developing",
+      "enabled": true,
+      "streamdeck": { "agent": "grok", "enabledDefault": true }
+    }
+  ]
+}

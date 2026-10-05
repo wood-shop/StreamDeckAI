@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wood-shop.example/streamdeckai/version.schema.json",
+  "title": "StreamDeckAI version.json",
+  "type": "object",
+  "required": ["schema", "version", "zipUrl"],
+  "properties": {
+    "schema": { "const": 1 },
+    "version": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+){1,3}$" },
+    "zipUrl": { "type": "string", "format": "uri" },
+    "sha256": { "type": "string", "pattern": "^([a-f0-9]{64})?$" },
+    "notes": { "type": "string" },
+    "publishedAt": { "type": "string" }
+  },
+  "additionalProperties": true
+}

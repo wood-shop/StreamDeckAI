@@ -1,0 +1,9 @@
+# ~/.codex/config.toml (Windows: %USERPROFILE%\.codex\config.toml) -- the notify key must be at user level
+# Codex only calls notify on turn completion (agent-turn-complete) => the button shows "done" only.
+# There is no "working"/"blocked" signal from Codex notify at the moment.
+notify = [
+  "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
+  "-NoProfile", "-ExecutionPolicy", "Bypass",
+  "-File", "C:/PATH/TO/sdai-hook.ps1",
+  "-Agent", "codex",
+]
