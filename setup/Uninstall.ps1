@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   StreamDeckAI をアンインストールする (プラグイン + ツール + 単一ショートカット)。

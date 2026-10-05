@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   StreamDeckAI を 1 アプリとしてインストールする (プラグイン + Selector + Updater)。

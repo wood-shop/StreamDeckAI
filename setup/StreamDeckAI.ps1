@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   StreamDeckAI ランチャー (Selector を起動)。ストア / デスクトップの単一エントリポイント。

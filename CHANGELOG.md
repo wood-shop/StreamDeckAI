@@ -6,6 +6,7 @@
 - ストア向け下書き `schemas/AppCatalog-StreamDeckAI/manifest.json` (streamdeck フィールドなし)。
 
 ### 修正
+- **セットアップ ps1 の UTF-8 BOM** (`setup/Install.ps1` / `Uninstall.ps1` / `StreamDeckAI.ps1`): Windows PowerShell 5.1 が BOM 無し UTF-8 の日本語を ParserError にする問題を修正。Release の `StreamDeckAI-Setup-0.3.0.zip` を再アップロード (プラグイン版は据え置き)。
 - **セレクタのカタログ取得** (C# `selector/CatalogService.cs` / PowerShell `updater/StreamDeckAI-Selector.ps1`・`sdai-selector.ps1`): 非公開の `wood-shop/grokAppStore` に対応。トークンを `STREAMDECKAI_GITHUB_TOKEN` → `updater-config.json` の `githubToken` の順で読み、`Authorization: Bearer` を付与。manifest は `raw.githubusercontent.com` ではなく Contents API (base64) で取得。401/404 時は日本語で githubToken 設定を案内し、ローカル Defaults で継続。
 - PowerShell セレクタに「カタログ再取得」ボタンと起動時の自動取得、`-FetchOnly` (UI なし確認) を追加。既知 id のチェック状態は保持。ファイルを UTF-8 BOM 付きに (Windows PowerShell 5.1 の文字化け防止)。
 - セレクタ Defaults のカテゴリを `agent` → `ツール` (ストアと統一)。
